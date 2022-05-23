@@ -50,11 +50,11 @@ CMD ["/bin/bash"]
 FROM devel as prebuilt
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
-## Build and change permission for runtime data conversion
-RUN source /opt/ros/"$ROS_DISTRO"/setup.bash \
-  && colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release \
-  && find /autoware/install -type d -exec chmod 777 {} \;
+# ## Build and change permission for runtime data conversion
+# RUN source /opt/ros/"$ROS_DISTRO"/setup.bash \
+#   && colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release \
+#   && find /autoware/install -type d -exec chmod 777 {} \;
 
-## Create entrypoint
-RUN echo "source /autoware/install/setup.bash" > /etc/bash.bashrc
+# ## Create entrypoint
+# RUN echo "source /autoware/install/setup.bash" > /etc/bash.bashrc
 CMD ["/bin/bash"]
