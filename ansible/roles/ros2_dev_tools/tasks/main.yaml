@@ -25,6 +25,12 @@
     state: latest
     update_cache: true
 
+- name: Install colcon-uv
+  become: true
+  ansible.builtin.pip:
+    name: "git+https://github.com/tier4/colcon-uv.git@fix/resolve-python-version-and-overrides#subdirectory=colcon_uv"
+    state: present
+
 - name: Run 'sudo rosdep init'
   become: true
   ansible.builtin.command:
