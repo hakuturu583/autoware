@@ -39,12 +39,18 @@ colcon = [
   "colcon-uv",
 ]
 
-# acados Python interface deps. acados-template is a path source — see
-# [tool.uv.sources] below.
+# acados Python interface deps.
+#
+# Note: `acados_template` itself is *not* listed here. It only exists on disk
+# after the `acados` Ansible role clones acados to /opt/acados, so depending
+# on it from pyproject.toml would make `uv lock` require that source tree to
+# be present on every dev host. Instead, the acados role calls
+# `uv pip install --editable /opt/acados/interfaces/acados_template` against
+# the acados venv right after this group is synced. casadi and sympy come
+# through uv.lock; acados_template is layered on top.
 acados = [
   "casadi==3.6.7",
   "sympy==1.13.3",
-  "acados-template",
 ]
 
 dev-tools = [
@@ -83,10 +89,4 @@ docs = [
 package = false
 
 [tool.uv.sources]
-# acados_template is editable-installed from the acados source tree the
-# `acados` Ansible role clones to /opt/acados. Resolving this group on a host
-# that hasn't run the role yet will fail at install time, which is the desired
-# behavior — there's no useful acados venv without the C library next to it.
-acados-template = { path = "/opt/acados/interfaces/acados_template", editable = true }
-
 colcon-uv = { git = "https://github.com/tier4/colcon-uv.git", rev = "fix/resolve-python-version-and-overrides", subdirectory = "colcon_uv" }

@@ -82,7 +82,7 @@ sudo --preserve-env=UV_PROJECT_ENVIRONMENT,UV_PYTHON_INSTALL_DIR,UV_CACHE_DIR \
     UV_PROJECT_ENVIRONMENT="${UV_SHARED_VENV}" \
     UV_PYTHON_INSTALL_DIR="${UV_INSTALL_PREFIX}/python" \
     UV_CACHE_DIR="${UV_INSTALL_PREFIX}/cache" \
-    uv sync --no-default-groups --group ansible --project "${REPO_ROOT}"
+    uv sync --frozen --no-default-groups --group ansible --project "${REPO_ROOT}"
 
 case ":${PATH}:" in
     *":${UV_SHARED_VENV}/bin:"*) ;;

@@ -50,6 +50,7 @@
   ansible.builtin.command:
     cmd: >
       uv sync
+      --frozen
       --no-default-groups
       {% for g in uv_shared_groups %}--group {{ g }} {% endfor %}
     chdir: "{{ uv_project_root }}"

@@ -32,7 +32,7 @@ SHARED_VENV="/opt/uv/venvs/tools"
 UV_PROJECT_ENVIRONMENT="${SHARED_VENV}" \
 UV_PYTHON_INSTALL_DIR="/opt/uv/python" \
 UV_CACHE_DIR="/opt/uv/cache" \
-    uv sync --no-default-groups --group ansible --project "${REPO_ROOT}"
+    uv sync --frozen --no-default-groups --group ansible --project "${REPO_ROOT}"
 ln -sf "${SHARED_VENV}/bin/ansible" /usr/local/bin/ansible
 ln -sf "${SHARED_VENV}/bin/ansible-playbook" /usr/local/bin/ansible-playbook
 ln -sf "${SHARED_VENV}/bin/ansible-galaxy" /usr/local/bin/ansible-galaxy

@@ -8,10 +8,11 @@ Installs [acados](https://github.com/acados/acados), a fast and embedded solver 
 2. Initializes submodules (shallow)
 3. Builds and installs acados in-tree with `QPOASES` and position-independent code enabled
 4. Downloads the [tera renderer](https://github.com/acados/tera_renderer) binary to `/opt/acados/bin/t_renderer` (supports `x86_64` and `aarch64`)
-5. Runs `uv sync --no-default-groups --group acados` against the repo-root `pyproject.toml`, materializing `/opt/acados/.venv` with `casadi`, `sympy`, and `acados_template` (editable, from `/opt/acados/interfaces/acados_template` via `[tool.uv.sources]`)
-6. Adds `CMAKE_PREFIX_PATH`, `ACADOS_SOURCE_DIR`, and `LD_LIBRARY_PATH` to the user's `.bashrc`
+5. Runs `uv sync --no-default-groups --group acados` against the repo-root `pyproject.toml`, materializing `/opt/acados/.venv` with the pinned `casadi` and `sympy` resolved from `uv.lock`
+6. Installs `acados_template` editable into the same venv (`uv pip install --editable /opt/acados/interfaces/acados_template`) — this source tree only exists after step 1, so it intentionally lives outside `uv.lock`
+7. Adds `CMAKE_PREFIX_PATH`, `ACADOS_SOURCE_DIR`, and `LD_LIBRARY_PATH` to the user's `.bashrc`
 
-All Python dependency versions live in the repo-root `pyproject.toml`'s `[dependency-groups]` table (group `acados`). Bumping `casadi` or `sympy` is a one-line edit there, and `uv.lock` records the resolved transitive set so reproducing the venv is a single `uv sync`.
+`casadi` and `sympy` versions are pinned in `pyproject.toml`'s `[dependency-groups.acados]` and the resolved transitive set is captured in `uv.lock` at the repo root.
 
 ## Installation ⭐
 

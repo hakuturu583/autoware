@@ -205,7 +205,7 @@ SHARED_VENV="/opt/uv/venvs/tools"
 # of groups (colcon, dev-tools, tools, ...) once it takes over.
 sudo --preserve-env=UV_PYTHON_INSTALL_DIR,UV_CACHE_DIR \
     env UV_PROJECT_ENVIRONMENT="${SHARED_VENV}" \
-    uv sync --no-default-groups --group ansible --project "${SCRIPT_DIR}"
+    uv sync --frozen --no-default-groups --group ansible --project "${SCRIPT_DIR}"
 
 export PATH="${SHARED_VENV}/bin:$PATH"
 

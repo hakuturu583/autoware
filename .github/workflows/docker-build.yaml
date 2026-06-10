@@ -103,13 +103,13 @@ jobs:
 
       - name: 📦 Sync tools group (vcs2l)
         if: inputs.needs-source
-        run: uv sync --no-default-groups --group tools
+        run: uv sync --frozen --no-default-groups --group tools
 
       - name: 📦 vcs import
         if: inputs.needs-source
         run: |
           mkdir -p src
-          uv run --no-default-groups --group tools vcs import --shallow src < repositories/autoware.repos
+          uv run --frozen --no-default-groups --group tools vcs import --shallow src < repositories/autoware.repos
 
       - name: 🐳 Setup Docker Buildx
         uses: docker/setup-buildx-action@v4

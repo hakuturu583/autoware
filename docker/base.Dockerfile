@@ -71,9 +71,9 @@ ENV UV_PROJECT_ROOT="/opt/uv-project"
 ENV ANSIBLE_COLLECTIONS_PATH="/home/${USERNAME}/.ansible/collections"
 
 # Stage the project metadata into a fixed location. We chown to the user so
-# `uv sync` can write the venv without sudo. uv.lock is optional during this
-# transition — when it doesn't exist yet, uv sync generates it in-place.
-COPY --chown=${USERNAME}:${USERNAME} pyproject.toml ${UV_PROJECT_ROOT}/pyproject.toml
+# `uv sync --frozen` can write the venv without sudo. uv.lock is required —
+# the build fails if it drifts from pyproject.toml.
+COPY --chown=${USERNAME}:${USERNAME} pyproject.toml uv.lock ${UV_PROJECT_ROOT}/
 
 # hadolint ignore=DL3003
 RUN --mount=type=bind,source=ansible-galaxy-requirements.yaml,target=/tmp/ansible/ansible-galaxy-requirements.yaml \
@@ -85,7 +85,7 @@ RUN --mount=type=bind,source=ansible-galaxy-requirements.yaml,target=/tmp/ansibl
     --mount=type=cache,id=uv-cache,target=/opt/uv/cache,uid=1000,gid=1000 \
     sudo chown -R ${USERNAME}:${USERNAME} /opt/uv ${UV_PROJECT_ROOT} && \
     UV_PROJECT_ENVIRONMENT=/opt/uv/venvs/tools \
-      uv sync --no-default-groups --group ansible --project "${UV_PROJECT_ROOT}" && \
+      uv sync --frozen --no-default-groups --group ansible --project "${UV_PROJECT_ROOT}" && \
     cd /tmp/ansible && \
     ansible-galaxy collection install -f -r ansible-galaxy-requirements.yaml && \
     ansible-playbook autoware.dev_env.install_rmw \

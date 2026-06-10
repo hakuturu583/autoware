@@ -14,11 +14,11 @@ jobs:
           version: "0.5.18"
 
       - name: Sync tools group (dco-check)
-        run: uv sync --no-default-groups --group tools
+        run: uv sync --frozen --no-default-groups --group tools
 
       - name: Check DCO
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          uv run --no-default-groups --group tools \
+          uv run --frozen --no-default-groups --group tools \
             dco-check --verbose --exclude-pattern 'pre-commit-ci\[bot\]@users\.noreply\.github\.com'

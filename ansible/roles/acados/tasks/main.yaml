@@ -53,17 +53,32 @@
     mode: "0755"
 
 # ---------- Python virtual environment ----------
-# Single source of truth: pyproject.toml's `acados` dependency group. uv builds
-# /opt/acados/.venv from scratch and installs casadi/sympy at the pinned
-# versions plus acados_template editable from /opt/acados/interfaces/acados_template
-# (declared as a path source in pyproject.toml).
+# casadi and sympy come from pyproject.toml's `acados` dependency group and
+# are resolved via uv.lock — that's what makes the venv reproducible.
 - name: Sync acados venv from pyproject.toml acados group
   become: true
   ansible.builtin.command:
-    cmd: uv sync --no-default-groups --group acados
+    cmd: uv sync --frozen --no-default-groups --group acados
     chdir: "{{ acados_uv_project_root }}"
   environment:
     UV_PROJECT_ENVIRONMENT: "{{ acados_venv_path }}"
+    UV_PYTHON_INSTALL_DIR: "{{ uv_python_install_dir | default('/opt/uv/python') }}"
+    UV_CACHE_DIR: "{{ uv_cache_dir | default('/opt/uv/cache') }}"
+  changed_when: false
+
+# acados_template lives at /opt/acados/interfaces/acados_template, which only
+# exists after the git clone above — so we can't declare it in pyproject.toml
+# (uv lock would require that source to be present on every dev host).
+# Installing it here as an editable layer on top of the synced venv keeps the
+# lockfile clean and matches the upstream acados quickstart.
+- name: Install acados_template (editable) into the acados venv
+  become: true
+  ansible.builtin.command:
+    cmd: >
+      uv pip install
+      --python {{ acados_venv_path }}/bin/python
+      --editable /opt/acados/interfaces/acados_template
+  environment:
     UV_PYTHON_INSTALL_DIR: "{{ uv_python_install_dir | default('/opt/uv/python') }}"
     UV_CACHE_DIR: "{{ uv_cache_dir | default('/opt/uv/cache') }}"
   changed_when: false
