@@ -8,14 +8,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Python 3.x
-        uses: actions/setup-python@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
         with:
-          python-version: 3.x
+          version: "0.5.18"
+
+      - name: Sync tools group (dco-check)
+        run: uv sync --no-default-groups --group tools
 
       - name: Check DCO
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          pip3 install -U dco-check
-          dco-check --verbose --exclude-pattern 'pre-commit-ci\[bot\]@users\.noreply\.github\.com'
+          uv run --no-default-groups --group tools \
+            dco-check --verbose --exclude-pattern 'pre-commit-ci\[bot\]@users\.noreply\.github\.com'

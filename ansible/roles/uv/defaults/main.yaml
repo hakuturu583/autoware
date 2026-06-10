@@ -1,0 +1,31 @@
+# Pinned for build reproducibility. Bump deliberately.
+uv_version: "0.5.18"
+
+# Where uv-managed shared venvs live (e.g. acados, build tools).
+uv_install_prefix: /opt/uv
+uv_venvs_dir: "{{ uv_install_prefix }}/venvs"
+
+# uv installs Python toolchains here and uses this as its cache. Both must be
+# readable+writable by ordinary users so that subsequent `uv` invocations from
+# `colcon build` (which run as the developer, not root) succeed.
+uv_python_install_dir: "{{ uv_install_prefix }}/python"
+uv_cache_dir: "{{ uv_install_prefix }}/cache"
+
+# Path to the pyproject.toml that owns every PyPI-installable build tool used
+# by this repo. Every role that needs ansible / colcon / pre-commit / gdown
+# / vcs2l / xmlschema / dco-check / mkdocs invokes `uv sync` against this
+# project — there is no separate `uv tool install` or `pip install` left.
+# Resolved against the location of the role at runtime.
+uv_project_root: "{{ (role_path ~ '/../../..') | realpath }}"
+
+# Shared venv for the "tools" groups (ansible, colcon, dev-tools, tools,
+# docs). Everything that doesn't need its own filesystem layout lives here so
+# colcon plugins, ansible, and lint tools all see one consistent Python env.
+uv_shared_venv: "{{ uv_venvs_dir }}/tools"
+
+# Groups synced into uv_shared_venv. Ordered to match pyproject.toml.
+uv_shared_groups:
+  - ansible
+  - colcon
+  - dev-tools
+  - tools

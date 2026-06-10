@@ -32,7 +32,7 @@ graph TB
 
 | Image                        | Description                                                                           | Use case                                                   |
 | ---------------------------- | ------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| `base`                       | ROS base, sudo, pipx, ansible, RMW, user `aw`                                         | Foundation for all other images                            |
+| `base`                       | ROS base, sudo, uv (pinned), RMW, user `aw`                                           | Foundation for all other images                            |
 | `core-dependencies`          | Build deps + compiled core packages (except autoware_core and autoware_rviz_plugins)  | CI for autoware_core                                       |
 | `core-devel`                 | Adds autoware_core build on top of core-dependencies                                  | Development and CI for packages depending on autoware_core |
 | `core`                       | Runtime-only: rosdep exec deps + compiled core from core-devel                        | Lightweight core runtime                                   |
@@ -67,7 +67,7 @@ Available images (replace `jazzy` with `humble` for other distros):
 
 | Tag                                | Description                                       |
 | ---------------------------------- | ------------------------------------------------- |
-| `base-jazzy`                       | ROS base + ansible + user aw                      |
+| `base-jazzy`                       | ROS base + uv (pinned) + user aw                  |
 | `core-dependencies-jazzy`          | Build deps + core packages (except autoware_core) |
 | `core-devel-jazzy`                 | Full core development image                       |
 | `core-jazzy`                       | Lightweight core runtime                          |

@@ -1,11 +1,9 @@
-- name: Install pipx
-  become: true
-  ansible.builtin.apt:
-    name: pipx
-    state: latest
-    update_cache: true
-
-- name: Install gdown to download files from CMakeLists.txt
-  community.general.pipx:
-    name: gdown
-    executable: /usr/bin/pipx
+# gdown is pinned in pyproject.toml (dependency-groups.tools) and installed
+# into /opt/uv/venvs/tools by the `uv` role via `uv sync --group tools`. The
+# role is left in place only to satisfy callers that still depend on the
+# `gdown` tag; it intentionally has no tasks.
+- name: Confirm gdown is available via the shared uv venv
+  ansible.builtin.command:
+    cmd: gdown --help
+  changed_when: false
+  failed_when: false

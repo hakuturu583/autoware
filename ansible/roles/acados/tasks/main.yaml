@@ -53,29 +53,19 @@
     mode: "0755"
 
 # ---------- Python virtual environment ----------
-
-- name: Create acados Python virtual environment
+# Single source of truth: pyproject.toml's `acados` dependency group. uv builds
+# /opt/acados/.venv from scratch and installs casadi/sympy at the pinned
+# versions plus acados_template editable from /opt/acados/interfaces/acados_template
+# (declared as a path source in pyproject.toml).
+- name: Sync acados venv from pyproject.toml acados group
   become: true
   ansible.builtin.command:
-    cmd: python3 -m venv /opt/acados/.venv
-    creates: /opt/acados/.venv/bin/activate
-
-- name: Upgrade pip inside the virtual environment
-  become: true
-  ansible.builtin.command:
-    cmd: /opt/acados/.venv/bin/pip install --upgrade pip
-  changed_when: false
-
-- name: Install Python packages in acados venv
-  become: true
-  ansible.builtin.command:
-    cmd: /opt/acados/.venv/bin/pip install {{ acados_pip_packages | join(' ') }}
-  changed_when: false
-
-- name: Install acados_template (editable) in acados venv
-  become: true
-  ansible.builtin.command:
-    cmd: /opt/acados/.venv/bin/pip install -e /opt/acados/interfaces/acados_template
+    cmd: uv sync --no-default-groups --group acados
+    chdir: "{{ acados_uv_project_root }}"
+  environment:
+    UV_PROJECT_ENVIRONMENT: "{{ acados_venv_path }}"
+    UV_PYTHON_INSTALL_DIR: "{{ uv_python_install_dir | default('/opt/uv/python') }}"
+    UV_CACHE_DIR: "{{ uv_cache_dir | default('/opt/uv/cache') }}"
   changed_when: false
 
 # ---------- Environment (.bashrc) ----------

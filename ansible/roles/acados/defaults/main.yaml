@@ -1,5 +1,12 @@
 acados_version: v0.5.3
 acados_tera_renderer_version: v0.2.0
-acados_pip_packages:
-  - casadi
-  - sympy
+
+# acados venv path. Downstream packages (and acados itself) hard-code this,
+# so don't relocate it without updating those callers.
+acados_venv_path: /opt/acados/.venv
+
+# Path to the repo's pyproject.toml. The acados venv is populated by
+# `uv sync --group acados --no-default-groups`, so Python dependency versions
+# (casadi, sympy, acados_template editable path) live in pyproject.toml, not
+# here.
+acados_uv_project_root: "{{ (role_path ~ '/../../..') | realpath }}"

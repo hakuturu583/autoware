@@ -1,0 +1,78 @@
+- name: Detect target architecture for uv
+  ansible.builtin.set_fact:
+    uv_arch: "{{ {'x86_64': 'x86_64', 'aarch64': 'aarch64'}[ansible_architecture] }}"
+
+# uv ships a self-contained release tarball; we deliberately avoid the
+# `astral.sh | sh` install script so the version is pinned in defaults/main.yaml
+# instead of "whatever upstream serves today".
+- name: Download uv release tarball
+  become: true
+  ansible.builtin.get_url:
+    url: "https://github.com/astral-sh/uv/releases/download/{{ uv_version }}/uv-{{ uv_arch }}-unknown-linux-gnu.tar.gz"
+    dest: "/tmp/uv-{{ uv_version }}-{{ uv_arch }}.tar.gz"
+    mode: "0644"
+
+- name: Install uv and uvx binaries to /usr/local/bin
+  become: true
+  ansible.builtin.unarchive:
+    src: "/tmp/uv-{{ uv_version }}-{{ uv_arch }}.tar.gz"
+    dest: /usr/local/bin
+    remote_src: true
+    extra_opts:
+      - "--strip-components=1"
+    creates: "/usr/local/bin/uv"
+
+- name: Remove uv release tarball
+  become: true
+  ansible.builtin.file:
+    path: "/tmp/uv-{{ uv_version }}-{{ uv_arch }}.tar.gz"
+    state: absent
+
+- name: Create uv install prefix tree
+  become: true
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - "{{ uv_install_prefix }}"
+    - "{{ uv_venvs_dir }}"
+    - "{{ uv_python_install_dir }}"
+    - "{{ uv_cache_dir }}"
+
+# Sync the shared "tools" venv from pyproject.toml. The whole point of this
+# role is to make `uv sync` the single source of truth for every PyPI install
+# in the repo, so we resolve all relevant groups here in one shot. Other roles
+# (acados, ros2_dev_tools, dev_tools, gdown, ...) only depend on the venv
+# existing; they don't call pip / uv pip / uv tool themselves.
+- name: Sync shared build-tools venv from pyproject.toml dependency-groups
+  become: true
+  ansible.builtin.command:
+    cmd: >
+      uv sync
+      --no-default-groups
+      {% for g in uv_shared_groups %}--group {{ g }} {% endfor %}
+    chdir: "{{ uv_project_root }}"
+  environment:
+    UV_PROJECT_ENVIRONMENT: "{{ uv_shared_venv }}"
+    UV_PYTHON_INSTALL_DIR: "{{ uv_python_install_dir }}"
+    UV_CACHE_DIR: "{{ uv_cache_dir }}"
+  changed_when: false
+
+# Expose the shared venv's bin/ to every interactive shell so that `colcon`,
+# `ansible-playbook`, `pre-commit`, `gdown`, etc. resolve to the uv-synced
+# copies. The venv lives under /opt so .bashrc points there, not at $HOME.
+- name: Export uv environment variables to .bashrc
+  become: true
+  ansible.builtin.blockinfile:
+    path: "{{ item }}"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK uv"
+    block: |
+      export UV_PYTHON_INSTALL_DIR="{{ uv_python_install_dir }}"
+      export UV_CACHE_DIR="{{ uv_cache_dir }}"
+      export PATH="{{ uv_shared_venv }}/bin:${PATH}"
+    create: true
+    mode: "0644"
+  loop:
+    - "{{ ansible_env.HOME }}/.bashrc"
+    - /etc/skel/.bashrc

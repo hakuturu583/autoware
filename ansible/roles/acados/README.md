@@ -8,9 +8,10 @@ Installs [acados](https://github.com/acados/acados), a fast and embedded solver 
 2. Initializes submodules (shallow)
 3. Builds and installs acados in-tree with `QPOASES` and position-independent code enabled
 4. Downloads the [tera renderer](https://github.com/acados/tera_renderer) binary to `/opt/acados/bin/t_renderer` (supports `x86_64` and `aarch64`)
-5. Creates a Python virtual environment at `/opt/acados/.venv`
-6. Installs `casadi`, `sympy`, and `acados_template` (editable) in the venv
-7. Adds `CMAKE_PREFIX_PATH`, `ACADOS_SOURCE_DIR`, and `LD_LIBRARY_PATH` to the user's `.bashrc`
+5. Runs `uv sync --no-default-groups --group acados` against the repo-root `pyproject.toml`, materializing `/opt/acados/.venv` with `casadi`, `sympy`, and `acados_template` (editable, from `/opt/acados/interfaces/acados_template` via `[tool.uv.sources]`)
+6. Adds `CMAKE_PREFIX_PATH`, `ACADOS_SOURCE_DIR`, and `LD_LIBRARY_PATH` to the user's `.bashrc`
+
+All Python dependency versions live in the repo-root `pyproject.toml`'s `[dependency-groups]` table (group `acados`). Bumping `casadi` or `sympy` is a one-line edit there, and `uv.lock` records the resolved transitive set so reproducing the venv is a single `uv sync`.
 
 ## Installation ⭐
 
@@ -81,7 +82,7 @@ The generated C code is then compiled as part of your normal CMake target, no Py
 - A C compiler (gcc/clang)
 - `make`
 - `git`
-- `python3` with `venv` module (`python3-venv` on Ubuntu)
+- `uv` on `PATH` — provided by the [`uv` role](../uv/README.md), which `install_dev_env.yaml` runs before this one. The role no longer depends on the distro `python3-venv` package; uv manages the interpreter itself.
 
 ## Idempotency
 

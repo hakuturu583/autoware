@@ -23,8 +23,11 @@ if [ -n "$CCACHE_DIR" ]; then
     ccache -M "$CCACHE_SIZE"
 fi
 
-# install xmlschema<4.0.0 before rosdep install as workaround for scenario_simulator_v2
-sudo pip3 install xmlschema==3.4.5
+# install xmlschema<4.0.0 before rosdep install as workaround for scenario_simulator_v2.
+# This has to land in the *system* Python because rosdep calls the distro
+# python3, not the uv-managed venv. We still pin the version here to match
+# pyproject.toml's `tools` group so there is exactly one source of truth.
+sudo --preserve-env=PATH uv pip install --python /usr/bin/python3 --system "xmlschema==3.4.5"
 
 sudo -E apt-get -y update
 

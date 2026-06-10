@@ -1,0 +1,3 @@
+# colcon-common-extensions, colcon-mixin and colcon-uv are pinned in
+# pyproject.toml (dependency-groups.colcon) and installed by the `uv` role
+# via `uv sync`. This file is intentionally minimal.

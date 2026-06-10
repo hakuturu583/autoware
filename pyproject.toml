@@ -1,0 +1,92 @@
+# Pinned PyPI build/dev/docs tooling for Autoware, organized as PEP 735
+# dependency groups. The whole point of this file is reproducibility: every
+# Python-flavored install in this repo (ansible, colcon, acados venv,
+# pre-commit, docs site, CI helpers, ...) resolves through `uv sync --group X`
+# against a checked-in `uv.lock` instead of through pipx / pip / apt.
+#
+# Layout:
+#   * shared "tools" venv at /opt/uv/venvs/tools — holds ansible, the colcon
+#     toolchain, dev-tools (pre-commit/clang-format), CI helpers (vcs2l,
+#     dco-check, xmlschema) and mkdocs. One venv keeps colcon-uv in the same
+#     Python environment as colcon-common-extensions, which is what makes the
+#     plugin discoverable.
+#   * acados venv at /opt/acados/.venv — isolated because acados_template
+#     needs to be editable-installed from /opt/acados/interfaces/acados_template
+#     and downstream packages hard-code `$ACADOS_SOURCE_DIR/.venv`.
+#
+# Regenerate the lockfile with:  uv lock
+[project]
+name = "autoware-build-tools"
+version = "0.0.0"
+description = "Pinned PyPI build, dev, and docs tooling for Autoware."
+requires-python = ">=3.10"
+# Intentionally empty: this project ships no runtime code. All real deps live
+# in [dependency-groups] below so they can be selected explicitly with
+# `uv sync --group <name> --no-default-groups`.
+dependencies = []
+
+[dependency-groups]
+ansible = [
+  "ansible==10.*",
+]
+
+# colcon-common-extensions pulls in the standard colcon-* plugins, and we
+# layer colcon-mixin and the tier4/colcon-uv plugin on top. All three must
+# share a single Python environment for colcon's entry points to find them.
+colcon = [
+  "colcon-common-extensions",
+  "colcon-mixin",
+  "colcon-uv",
+]
+
+# acados Python interface deps. acados-template is a path source — see
+# [tool.uv.sources] below.
+acados = [
+  "casadi==3.6.7",
+  "sympy==1.13.3",
+  "acados-template",
+]
+
+dev-tools = [
+  "pre-commit",
+  "clang-format",
+]
+
+# Small one-shot helpers used by Ansible roles or CI scripts.
+#   gdown      — fetch artifacts from Google Drive (used by some CMakeLists)
+#   vcs2l      — `vcs import` for repository .repos files
+#   xmlschema  — pre-rosdep workaround for scenario_simulator_v2 (must be
+#                <4.0.0 at the moment)
+#   dco-check  — sign-off check in the DCO workflow
+tools = [
+  "gdown",
+  "vcs2l",
+  "xmlschema==3.4.5",
+  "dco-check",
+]
+
+# Documentation site. The actual autoware-documentation repo can install this
+# group with `uv sync --group docs` against this pyproject.toml so that all
+# pinned doc dependencies (theme, plugins) live alongside the build tooling.
+docs = [
+  "mkdocs",
+  "mkdocs-material",
+  "mkdocs-glightbox",
+  "mkdocs-redirects",
+  "mkdocs-monorepo-plugin",
+  "pymdown-extensions",
+  "mike",
+]
+
+[tool.uv]
+# Don't ship our project metadata into any venv — only the groups matter.
+package = false
+
+[tool.uv.sources]
+# acados_template is editable-installed from the acados source tree the
+# `acados` Ansible role clones to /opt/acados. Resolving this group on a host
+# that hasn't run the role yet will fail at install time, which is the desired
+# behavior — there's no useful acados venv without the C library next to it.
+acados-template = { path = "/opt/acados/interfaces/acados_template", editable = true }
+
+colcon-uv = { git = "https://github.com/tier4/colcon-uv.git", rev = "fix/resolve-python-version-and-overrides", subdirectory = "colcon_uv" }

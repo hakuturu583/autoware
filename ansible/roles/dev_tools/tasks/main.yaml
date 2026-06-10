@@ -1,3 +1,9 @@
+# pre-commit and clang-format are pinned in pyproject.toml
+# (dependency-groups.dev-tools) and installed into /opt/uv/venvs/tools by the
+# `uv` role via `uv sync --group dev-tools`. Nothing Python-flavored happens
+# here anymore — this role only handles non-PyPI tools (Git LFS, Go,
+# PlotJuggler).
+
 # https://github.com/git-lfs/git-lfs/wiki/Installation#debian-and-ubuntu
 - name: Install Git LFS
   become: true
@@ -9,23 +15,6 @@
 - name: Setup Git LFS for current user
   ansible.builtin.command: git lfs install
   changed_when: false
-
-- name: Install pipx
-  become: true
-  ansible.builtin.apt:
-    name: pipx
-    state: latest
-    update_cache: true
-
-- name: Install pre-commit
-  community.general.pipx:
-    name: pre-commit
-    executable: /usr/bin/pipx
-
-- name: Install clang-format
-  community.general.pipx:
-    name: clang-format
-    executable: /usr/bin/pipx
 
 - name: Install Go
   become: true

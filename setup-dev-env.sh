@@ -176,22 +176,38 @@ if ! (command -v git >/dev/null 2>&1); then
     sudo apt-get -y install git
 fi
 
-# Install pip for ansible
-if ! (python3 -m pip --version >/dev/null 2>&1); then
-    sudo apt-get -y update
-    sudo apt-get -y install python3-pip python3-venv
+# Install uv (pinned). Keep in sync with ansible/roles/uv/defaults/main.yaml.
+UV_VERSION="${UV_VERSION:-0.5.18}"
+if [ "$(uv --version 2>/dev/null | awk '{print $2}')" != "${UV_VERSION}" ]; then
+    if ! command -v curl >/dev/null 2>&1; then
+        sudo apt-get -y update
+        sudo apt-get -y install --no-install-recommends curl ca-certificates tar
+    fi
+    arch="$(uname -m)"
+    tarball="$(mktemp -t uv.XXXXXX.tar.gz)"
+    curl -fsSL \
+        "https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/uv-${arch}-unknown-linux-gnu.tar.gz" \
+        -o "$tarball"
+    sudo tar -xzf "$tarball" --strip-components=1 -C /usr/local/bin \
+        "uv-${arch}-unknown-linux-gnu/uv" \
+        "uv-${arch}-unknown-linux-gnu/uvx"
+    sudo chmod 0755 /usr/local/bin/uv /usr/local/bin/uvx
+    rm -f "$tarball"
 fi
 
-# Install pipx for ansible
-if ! (python3 -m pipx --version >/dev/null 2>&1); then
-    sudo apt-get -y update
-    sudo apt-get -y install pipx
-fi
+sudo install -d -m 0755 /opt/uv /opt/uv/venvs /opt/uv/python /opt/uv/cache
+export UV_PYTHON_INSTALL_DIR="/opt/uv/python"
+export UV_CACHE_DIR="/opt/uv/cache"
+SHARED_VENV="/opt/uv/venvs/tools"
 
-# Install ansible
-python3 -m pipx ensurepath
-export PATH="${PIPX_BIN_DIR:=$HOME/.local/bin}:$PATH"
-pipx install --include-deps --force "ansible==10.*"
+# Resolve ansible via pyproject.toml dependency-groups (no `uv tool install`,
+# no pip install). The `uv` Ansible role re-runs `uv sync` with the full set
+# of groups (colcon, dev-tools, tools, ...) once it takes over.
+sudo --preserve-env=UV_PYTHON_INSTALL_DIR,UV_CACHE_DIR \
+    env UV_PROJECT_ENVIRONMENT="${SHARED_VENV}" \
+    uv sync --no-default-groups --group ansible --project "${SCRIPT_DIR}"
+
+export PATH="${SHARED_VENV}/bin:$PATH"
 
 # Install ansible collections
 echo -e "\e[36m"ansible-galaxy collection install -f -r "$SCRIPT_DIR/ansible-galaxy-requirements.yaml" "\e[m"

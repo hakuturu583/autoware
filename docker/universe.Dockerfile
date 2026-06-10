@@ -8,16 +8,17 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ARG ROS_DISTRO
 
 USER ${USERNAME}
+# ansible is already present in /opt/uv/venvs/tools/bin from the base stage
+# (synced via `uv sync --group ansible`). We just need to call it.
 RUN --mount=type=cache,id=apt-cache-${ROS_DISTRO},target=/var/cache/apt,sharing=locked \
     --mount=type=cache,id=apt-lists-${ROS_DISTRO},target=/var/lib/apt/lists,sharing=locked \
-    --mount=type=cache,id=pip-cache,target=/home/aw/.cache/pip,uid=1000,gid=1000 \
-    --mount=type=cache,id=pipx-cache,target=/home/aw/.cache/pipx,uid=1000,gid=1000 \
-    pipx install --include-deps "ansible==10.*" && \
+    --mount=type=cache,id=uv-cache,target=/opt/uv/cache,uid=1000,gid=1000 \
     ansible-playbook autoware.dev_env.install_image_deps \
-      --tags acados \
-      -e "rosdistro=${ROS_DISTRO}" && \
-    sudo rm -rf /opt/acados/.git /opt/acados/examples /opt/acados/docs /opt/acados/test && \
-    pipx uninstall ansible
+      --tags uv,acados \
+      -e "rosdistro=${ROS_DISTRO}" \
+      -e "uv_project_root=${UV_PROJECT_ROOT}" \
+      -e "acados_uv_project_root=${UV_PROJECT_ROOT}" && \
+    sudo rm -rf /opt/acados/.git /opt/acados/examples /opt/acados/docs /opt/acados/test
 USER root
 
 ENV CMAKE_PREFIX_PATH="/opt/acados${CMAKE_PREFIX_PATH:+:$CMAKE_PREFIX_PATH}"

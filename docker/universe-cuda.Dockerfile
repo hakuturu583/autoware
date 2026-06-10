@@ -8,22 +8,24 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ARG ROS_DISTRO
 
 USER ${USERNAME}
+# ansible comes from the base stage's uv sync (group: ansible) — no separate
+# install path. UV_PROJECT_ROOT (set in base.Dockerfile) points the uv role at
+# the canonical pyproject.toml location.
 # hadolint ignore=DL3003
 RUN --mount=type=bind,source=ansible-galaxy-requirements.yaml,target=/tmp/ansible/ansible-galaxy-requirements.yaml \
     --mount=type=bind,source=ansible,target=/tmp/ansible/ansible \
     --mount=type=cache,id=apt-cache-${ROS_DISTRO},target=/var/cache/apt,sharing=locked \
     --mount=type=cache,id=apt-lists-${ROS_DISTRO},target=/var/lib/apt/lists,sharing=locked \
-    --mount=type=cache,id=pip-cache,target=/home/aw/.cache/pip,uid=1000,gid=1000 \
-    --mount=type=cache,id=pipx-cache,target=/home/aw/.cache/pipx,uid=1000,gid=1000 \
-    pipx install --include-deps "ansible==10.*" && \
+    --mount=type=cache,id=uv-cache,target=/opt/uv/cache,uid=1000,gid=1000 \
     cd /tmp/ansible && \
     ansible-galaxy collection install -f -r ansible-galaxy-requirements.yaml && \
     ansible-playbook autoware.dev_env.install_image_deps \
-      --tags core,acados \
+      --tags uv,core,acados \
       --skip-tags base,nvidia \
-      -e "rosdistro=${ROS_DISTRO}" && \
-    sudo rm -rf /opt/acados/.git /opt/acados/examples /opt/acados/docs /opt/acados/test && \
-    pipx uninstall ansible
+      -e "rosdistro=${ROS_DISTRO}" \
+      -e "uv_project_root=${UV_PROJECT_ROOT}" \
+      -e "acados_uv_project_root=${UV_PROJECT_ROOT}" && \
+    sudo rm -rf /opt/acados/.git /opt/acados/examples /opt/acados/docs /opt/acados/test
 USER root
 
 ENV CC="/usr/lib/ccache/gcc"
@@ -91,16 +93,14 @@ RUN --mount=type=bind,source=ansible-galaxy-requirements.yaml,target=/tmp/ansibl
     --mount=type=bind,source=ansible,target=/tmp/ansible/ansible \
     --mount=type=cache,id=apt-cache-${ROS_DISTRO},target=/var/cache/apt,sharing=locked \
     --mount=type=cache,id=apt-lists-${ROS_DISTRO},target=/var/lib/apt/lists,sharing=locked \
-    --mount=type=cache,id=pip-cache,target=/home/aw/.cache/pip,uid=1000,gid=1000 \
-    --mount=type=cache,id=pipx-cache,target=/home/aw/.cache/pipx,uid=1000,gid=1000 \
+    --mount=type=cache,id=uv-cache,target=/opt/uv/cache,uid=1000,gid=1000 \
     sudo apt-get update && \
-    pipx install --include-deps "ansible==10.*" && \
     cd /tmp/ansible && \
     ansible-galaxy collection install -f -r ansible-galaxy-requirements.yaml && \
     ansible-playbook autoware.dev_env.install_image_deps \
       --tags geographiclib,qt5ct_setup \
-      -e "rosdistro=${ROS_DISTRO}" && \
-    pipx uninstall ansible
+      -e "rosdistro=${ROS_DISTRO}" \
+      -e "uv_project_root=${UV_PROJECT_ROOT}"
 USER root
 
 COPY --parents --chown=${USERNAME}:${USERNAME} src/**/package.xml /tmp/

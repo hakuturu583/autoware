@@ -1,10 +1,12 @@
+# Python-flavored colcon dependencies (colcon-common-extensions, colcon-mixin,
+# colcon-uv) are installed into /opt/uv/venvs/tools by the `uv` role via
+# `uv sync --group colcon`. This role only takes care of apt packages and
+# rosdep init.
 - name: Install apt packages
   become: true
   ansible.builtin.apt:
     name:
-      - python3-colcon-mixin
       - python3-flake8-docstrings
-      - python3-pip
       - python3-pytest-cov
       - python3-flake8-blind-except
       - python3-flake8-builtins
@@ -17,8 +19,6 @@
       - python3-pytest-rerunfailures
       - ros-build-essential # from ros-dev-tools
       - python3-bloom # from ros-dev-tools
-      - python3-colcon-common-extensions # from ros-dev-tools
-      - python3-colcon-mixin # from ros-dev-tools
       - python3-rosdep # from ros-dev-tools
       - python3-vcs2l # formerly python3-vcstool
       - wget # from ros-dev-tools

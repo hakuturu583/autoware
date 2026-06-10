@@ -95,12 +95,21 @@ jobs:
         if: inputs.free-disk-space && runner.environment == 'github-hosted'
         uses: ./.github/actions/free-disk-space
 
-      - name: 📦 Import source repos
+      - name: ⚙️ Install uv
+        if: inputs.needs-source
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "0.5.18"
+
+      - name: 📦 Sync tools group (vcs2l)
+        if: inputs.needs-source
+        run: uv sync --no-default-groups --group tools
+
+      - name: 📦 vcs import
         if: inputs.needs-source
         run: |
-          pipx install vcs2l
           mkdir -p src
-          vcs import --shallow src < repositories/autoware.repos
+          uv run --no-default-groups --group tools vcs import --shallow src < repositories/autoware.repos
 
       - name: 🐳 Setup Docker Buildx
         uses: docker/setup-buildx-action@v4

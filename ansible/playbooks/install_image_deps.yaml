@@ -11,6 +11,13 @@
       tags: [always]
 
   roles:
+    # uv installs the pinned uv binary and runs `uv sync` against the repo's
+    # pyproject.toml, populating /opt/uv/venvs/tools with ansible, colcon,
+    # pre-commit, clang-format, gdown, vcs2l, xmlschema and dco-check. Every
+    # downstream role is a thin wrapper that assumes that venv is on PATH.
+    - role: autoware.dev_env.uv
+      tags: [base, core, universe, acados, ros2_dev_tools, dev_tools, gdown, uv]
+
     - role: autoware.dev_env.rmw_implementation
       tags: [base, core, universe, rmw]
 

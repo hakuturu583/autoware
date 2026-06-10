@@ -1,15 +1,13 @@
-# devel
+# dev_tools
 
-This role installs optional development tools for Autoware.
+Installs optional non-PyPI development tools for Autoware. PyPI dev tools (`pre-commit`, `clang-format`) live in the repo-root `pyproject.toml` `dev-tools` group and are materialized into `/opt/uv/venvs/tools` by the [`uv` role](../uv/README.md) via `uv sync` — this role no longer touches them.
 
 ## Tools
 
-- pipx
-- Go
-- PlotJuggler
-- Git LFS
-- pre-commit
-- clang-format
+- Git LFS (apt)
+- Go (apt)
+- PlotJuggler (apt, `ros-${rosdistro}-plotjuggler`)
+- pre-commit, clang-format (uv-managed, see `pyproject.toml [dependency-groups] dev-tools`)
 
 ## Inputs
 
@@ -17,29 +15,17 @@ This role installs optional development tools for Autoware.
 | --------- | -------- | --------------------- |
 | rosdistro | true     | The ROS distribution. |
 
-## Manual Installation
-
-## Set up the environment variables
+## Manual installation
 
 ```bash
 # Choose your ROS distribution
 rosdistro=humble  # or jazzy
-```
 
-## Install the tools
-
-```bash
 sudo apt-get update
+sudo apt install -y golang ros-${rosdistro}-plotjuggler-ros git-lfs
 
-sudo apt install pipx
-
-sudo apt install -y golang
-sudo apt install -y ros-${rosdistro}-plotjuggler-ros
-sudo apt install -y git-lfs
-
-# Setup Git LFS
 git lfs install
 
-pipx install pre-commit
-pipx install clang-format
+# pre-commit and clang-format come via uv sync (see ../uv/README.md).
+uv sync --no-default-groups --group dev-tools
 ```
