@@ -57,8 +57,8 @@ repositories:
   # universe
   universe/autoware_universe:
     type: git
-    url: https://github.com/autowarefoundation/autoware_universe.git
-    version: 0.52.0
+    url: https://github.com/tier4/autoware_universe.git
+    version: feat/carla_splatsim-integration
   universe/external/tier4_autoware_msgs:
     type: git
     url: https://github.com/tier4/tier4_autoware_msgs.git
