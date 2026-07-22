@@ -21,8 +21,25 @@ with zipfile.ZipFile("$CARLA_WHEEL") as wheel:
     wheel.extractall("$CARLA_PYTHON_DIR")
 PY
 fi
+# splatsim's gRPC client needs protobuf>=5 and grpcio, which live in the user
+# site-packages (~/.local). PYTHONNOUSERSITE=1 (below, to keep the CARLA wheel's
+# deps isolated) hides them, and the apt protobuf (3.12) is too old for the
+# generated *_pb2.py (ImportError: cannot import name 'runtime_version'). Expose
+# ONLY protobuf + grpc via a curated symlink dir so numpy/etc. stay isolated.
+SPLATSIM_PYDEPS="${SPLATSIM_PYDEPS:-$HOME/.cache/splatsim-pydeps}"
+USER_SITE="$(python3 -c 'import site,sys; sys.stdout.write(site.getusersitepackages())' 2>/dev/null || echo "$HOME/.local/lib/python3.10/site-packages")"
+SPLATSIM_PYDEPS_PATH=""
+if [[ -d "$USER_SITE/google" && -d "$USER_SITE/grpc" ]]; then
+  mkdir -p "$SPLATSIM_PYDEPS"
+  for pkg in google grpc; do
+    ln -sfn "$USER_SITE/$pkg" "$SPLATSIM_PYDEPS/$pkg"
+  done
+  SPLATSIM_PYDEPS_PATH="$SPLATSIM_PYDEPS:"
+else
+  echo "WARNING: protobuf/grpc not found in user site-packages ($USER_SITE); splatsim LiDAR may fail to import" >&2
+fi
 export PYTHONNOUSERSITE=1
-export PYTHONPATH="$CARLA_PYTHON_DIR:${PYTHONPATH:-}"
+export PYTHONPATH="${SPLATSIM_PYDEPS_PATH}$CARLA_PYTHON_DIR:${PYTHONPATH:-}"
 
 # Derived from the CARLA 0.10.0 Odaiba reference pose in PythonAPI/examples/rgl_test_autoware_demo.py:
 #   map_x = carla_x + 92008.4413568
@@ -30,8 +47,19 @@ export PYTHONPATH="$CARLA_PYTHON_DIR:${PYTHONPATH:-}"
 MAP_ORIGIN_X="${MAP_ORIGIN_X:-92008.441357}"
 MAP_ORIGIN_Y="${MAP_ORIGIN_Y:-45335.052882}"
 
-# Odaiba's validated CARLA 0.10.0 spawn from rgl_test_autoware_demo.py.
-SPAWN_POINT="${SPAWN_POINT:--2341.209473,3139.423096,10.9,0.0,0.0,-120.0}"
+# Spawn at the START of the ego trajectory recorded in the v25 usdz splatsim
+# scene (~/workspace/fg_plus_bg_background_v25_enu_ecef.usdz), so the ego begins
+# exactly where the reconstructed drive began and the 3DGS scene is populated
+# around it from frame 1.
+#   Derivation: rig_trajectories.json rigs[0].poses[0] (world ENU, rig origin =
+#   ground_under_rear_axle) -> ECEF via scene.json ecef_anchor -> WGS84 LLA ->
+#   MGRS 54SUE local (matches Autoware odaibatest map.osm local_x/y, affine
+#   residual ~1e-13) -> CARLA (map_x = carla_x + MAP_ORIGIN_X,
+#   map_y = -carla_y + MAP_ORIGIN_Y; carla_yaw = -yaw_enu).
+#   z is left at 10.9 as a safe hint; SPAWN_POINT_GROUND_SNAP re-grounds it
+#   (raycast starts at CARLA z=1000 and ignores this value).
+# Previous validated Odaiba spawn: -2341.209473,3139.423096,10.9,0.0,0.0,-120.0
+SPAWN_POINT="${SPAWN_POINT:--2574.309,2109.126,10.9,0.0,0.0,56.180}"
 if [[ "${CARLA_USE_REAL_CAMERA:-0}" == "1" ]]; then
   DEFAULT_SENSOR_MAPPING_FILE="$(pwd)/install/autoware_carla_interface/share/autoware_carla_interface/config/sensor_mapping_camera_preview.yaml"
   DEFAULT_NO_RENDERING_MODE=False
