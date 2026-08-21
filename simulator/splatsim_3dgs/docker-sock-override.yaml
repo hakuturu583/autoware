@@ -1,0 +1,8 @@
+services:
+  autoware-devel:
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - ../..:/home/aw/autoware
+      - ${HOME}/autoware_data:/home/aw/autoware_data
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /home/masaya/workspace:/home/masaya/workspace:ro
