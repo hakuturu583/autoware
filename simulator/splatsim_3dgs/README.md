@@ -36,7 +36,7 @@ flowchart LR
 | 役割 | リポジトリ / ブランチ | 確認済みコミット |
 |---|---|---|
 | universe | [hakuturu583/autoware.universe : `feat/autoware_tensorrt_oneplanner`](https://github.com/hakuturu583/autoware.universe/tree/feat/autoware_tensorrt_oneplanner) | [`c1226187f2`](https://github.com/hakuturu583/autoware.universe/commit/c1226187f2) |
-| launcher | [hakuturu583/autoware_launch : `feat/oneplanner-carla010-splatsim`](https://github.com/hakuturu583/autoware_launch/tree/feat/oneplanner-carla010-splatsim) | [`291fc374`](https://github.com/hakuturu583/autoware_launch/commit/291fc374) |
+| launcher | [hakuturu583/autoware_launch : `feat/oneplanner-carla010-splatsim`](https://github.com/hakuturu583/autoware_launch/tree/feat/oneplanner-carla010-splatsim) | [`03ad7bd4`](https://github.com/hakuturu583/autoware_launch/commit/03ad7bd4) |
 | splatsim | [hakuturu583/splatsim : `feat/lidar-sector-streaming`](https://github.com/hakuturu583/splatsim/tree/feat/lidar-sector-streaming) | [`15ac143`](https://github.com/hakuturu583/splatsim/commit/15ac143) |
 | ansible (spconv) | [hakuturu583/autoware : `fix/enable-spconv-ubuntu2404`](https://github.com/hakuturu583/autoware/tree/fix/enable-spconv-ubuntu2404) | — |
 | core msgs | [autowarefoundation/autoware_internal_msgs : `1.12.1`](https://github.com/autowarefoundation/autoware_internal_msgs/tree/1.12.1) | — |
@@ -181,21 +181,13 @@ docker exec -d aw-devel-autoware-devel-1 bash -lc \
   'bash /home/aw/autoware_data/launch_splatsim_3dgs.sh > /tmp/carla_3dgs.log 2>&1'
 ```
 
-### lanelet2 ローダの別プロセス起動(必須ワークアラウンド)
+### lanelet2 ローダは launch が standalone 起動する(恒久修正済み)
 
-map_container 内の lanelet2_map_loader は dlopen と lttng-ust の登録ロック衝突でコンテナごとデッドロックするため、**launch の20秒後を目安に別プロセスで起動する**:
-
-```bash
-docker exec -d aw-devel-autoware-devel-1 bash -c '
-  source /opt/ros/jazzy/setup.bash && source /home/aw/autoware/install/setup.bash &&
-  exec install/autoware_map_loader/lib/autoware_map_loader/autoware_lanelet2_map_loader \
-    --ros-args -r __ns:=/map -r __node:=lanelet2_map_loader \
-    -p use_sim_time:=true -p allow_unsupported_version:=true \
-    -p center_line_resolution:=5.0 -p use_waypoints:=true \
-    -p lanelet2_map_path:=/home/aw/autoware_data/maps/Odaiba/lanelet2_map.osm \
-    -p enable_selected_map_loading:=false -p "lanelet2_map_metadata_path:=none" \
-    -r output/lanelet2_map:=/map/vector_map > /tmp/lanelet_loader.log 2>&1'
-```
+以前は map_container 内の lanelet2_map_loader が dlopen × lttng-ust の登録ロック衝突で
+コンテナごとデッドロックし、手動で別プロセス起動する必要があった。現在は
+`tier4_map_launch/launch/map.launch.xml` が **lanelet2_map_loader を独立プロセスの
+`<node>` として起動する**よう修正済み([`03ad7bd4`](https://github.com/hakuturu583/autoware_launch/commit/03ad7bd4))のため、**手動投入は不要**。
+`/map/vector_map` の Publisher が 1 になっていることだけ確認すればよい。
 
 ## 7. 動作確認チェックリスト
 
@@ -247,7 +239,7 @@ bash ~/autoware_data/restart_3dgs_sim.sh
 | splatsim コンテナが exit 136(SIGFPE) | LiDAR専用 Initialize に intrinsics が無く、0×0カメラのwarmupレンダで CUDA ゼロ除算 | クライアントがダミー intrinsics(64×64)を送る | ✅ 修正済(universe) |
 | `unsupported sidecar version 2` | 旧 splatsim イメージ(7/23)が新シーン形式非対応 | `feat/lidar-sector-streaming` 以降を使う | ✅ 運用で解決 |
 | concatenated が出ない / component load が全停止 | ① topic_tools RelayNode が jazzy で型解決待ちハング ② compare_map がマップ待ちで無限ブロック(マップ破損時) | ① relay廃止し crop_mirror を直接remap ② マップ実体を修復 | ✅ 修正済 `291fc374`系 |
-| vector map が出ない(map_containerごと沈黙) | lanelet2 ローダの dlopen × lttng-ust デッドロック | 手順6の別プロセス起動 | ⚠️ ワークアラウンド運用 |
+| vector map が出ない(map_containerごと沈黙) | lanelet2 ローダの dlopen × lttng-ust デッドロック | map.launch.xml で standalone `<node>` 化 | ✅ 修正済 `03ad7bd4` |
 | Engage後に発進しない(throttle≈0.2) | taxi.ford は小スロットルで発進不能 | `min_positive_throttle:=0.6` | ✅ 修正済 `c1226187f2` |
 | Motion診断が恒久赤 | ① 未起動の control_command_gate の診断要求 ② 残骸ノードの重複検出 | ① system.yaml から該当ユニット削除 ② 手順9の完全駆除 | ✅ 修正済 `291fc374` |
 | ego spawn 失敗(RuntimeError) | 前runの残骸 / ワールド状態の汚れ | `force_load_world:=true` + 完全駆除 | ✅ 運用で解決 |
@@ -258,7 +250,6 @@ bash ~/autoware_data/restart_3dgs_sim.sh
 
 - **ステアリング調整未移植**: `steer_response_calibration_table` / `normalize_steer_command` 等は carla010 ブランチのみ。制御精度が必要なら移植する
 - **splatsim 側の恒久修正**(tier4/splatsim へ): ① intrinsics 未設定時は warmup をスキップ(SIGFPE根治) ② PointCloud2 の `is_dense=true` 化(Autoware側で将来ERRORになる警告)
-- **lanelet2 ローダ standalone 化の launcher 恒久化**(現状は手動起動)
 - traffic light 認識は TensorRT モデル未配置で停止中(走行には影響なし、信号情報は空)
 - devcontainer 再作成のたびに手順3の依存再導入が必要
 
@@ -453,24 +444,25 @@ mgrs_grid: 54SUE
 ```bash
 #!/usr/bin/env bash
 # 3DGS シミュレーションのワンショット再起動(ホスト側で実行)。
-# 全ROSプロセス駆除 → splatsimコンテナ削除 → CARLA再起動 → launch → lanelet2ローダ投入。
+# 全ROSプロセス駆除 → splatsimコンテナ削除 → CARLA再起動 → launch。
+# (lanelet2 ローダは map.launch.xml 側で standalone 起動されるため手動投入は不要)
 set -eo pipefail
 
 DEV=aw-devel-autoware-devel-1
 CARLA_ROOT="${CARLA_ROOT:-$HOME/Carla-0.10.0-Linux-Shipping/Carla-0.10.0-Linux-Shipping}"
 CARLA_SCRIPT="${CARLA_SCRIPT:-$HOME/Downloads/data/run_carla_0_10.sh}"
 
-echo "[1/5] devcontainer 内の ROS プロセスを駆除"
+echo "[1/4] devcontainer 内の ROS プロセスを駆除"
 docker exec "$DEV" bash -c '
   kill -TERM $(pgrep -f "e2e_sim[u]lator.launch") 2>/dev/null; sleep 5
   PIDS=$(ps -eo pid,args | grep -E "\-\-ros-args" | grep -v grep | awk "{print \$1}")
   kill -KILL $PIDS 2>/dev/null; sleep 2
   echo "  残存ROSプロセス: $(ps -eo args | grep -cE "[\-]-ros-args")"' || true
 
-echo "[2/5] splatsim コンテナ削除"
+echo "[2/4] splatsim コンテナ削除"
 docker rm -f splatsim_top 2>/dev/null || true
 
-echo "[3/5] CARLA 再起動(kill 後 12 秒待ち)"
+echo "[3/4] CARLA 再起動(kill 後 12 秒待ち)"
 pkill -9 -f "Carla[U]nreal" 2>/dev/null || true
 sleep 12
 CARLA_ROOT="$CARLA_ROOT" CARLA_RENDER_MODE=nullrhi \
@@ -482,27 +474,15 @@ for i in $(seq 1 60); do
 done
 ss -ltn | grep -q :2000 || { echo "CARLA が起動しない (/tmp/carla_server.log 参照)" >&2; exit 1; }
 
-echo "[4/5] Autoware + SplatSim launch(デタッチ)"
+echo "[4/4] Autoware + SplatSim launch(デタッチ)"
 docker exec -d "$DEV" bash -lc \
   'bash /home/aw/autoware_data/launch_splatsim_3dgs.sh > /tmp/carla_3dgs.log 2>&1'
-sleep 20
-
-echo "[5/5] lanelet2 ローダ投入(map_container デッドロック回避)"
-docker exec -d "$DEV" bash -c '
-  source /opt/ros/jazzy/setup.bash && source /home/aw/autoware/install/setup.bash &&
-  exec install/autoware_map_loader/lib/autoware_map_loader/autoware_lanelet2_map_loader \
-    --ros-args -r __ns:=/map -r __node:=lanelet2_map_loader \
-    -p use_sim_time:=true -p allow_unsupported_version:=true \
-    -p center_line_resolution:=5.0 -p use_waypoints:=true \
-    -p lanelet2_map_path:=/home/aw/autoware_data/maps/Odaiba/lanelet2_map.osm \
-    -p enable_selected_map_loading:=false -p "lanelet2_map_metadata_path:=none" \
-    -r output/lanelet2_map:=/map/vector_map > /tmp/lanelet_loader.log 2>&1'
 
 echo "完了。2〜3分後に RViz でゴール設定 → Engage。ログ: docker exec $DEV tail -f /tmp/carla_3dgs.log"
 ```
 
 ---
 
-*2026-08-21 実機確認: LiDAR 10 Hz / 約10万点(render 12 ms, LoD on, 25.5M gaussians)、自己位置 67 Hz、Motion診断 全緑、Engage → 自動走行成功。フル再起動での再現性も確認済み。*
+*2026-08-21 実機確認: LiDAR 10 Hz / 約10万点(render 12 ms, LoD on, 25.5M gaussians)、自己位置 67 Hz、Motion診断 全緑、Engage → 自動走行成功。フル再起動での再現性も確認済み。lanelet2 ローダの standalone 化(03ad7bd4)後も launch のみで vector_map 配信・重複なしを確認。*
 
 *関連ブランチ: [autoware.universe feat/autoware_tensorrt_oneplanner](https://github.com/hakuturu583/autoware.universe/tree/feat/autoware_tensorrt_oneplanner) ・ [autoware_launch feat/oneplanner-carla010-splatsim](https://github.com/hakuturu583/autoware_launch/tree/feat/oneplanner-carla010-splatsim) ・ [splatsim feat/lidar-sector-streaming](https://github.com/hakuturu583/splatsim/tree/feat/lidar-sector-streaming) ・ [autoware fix/enable-spconv-ubuntu2404](https://github.com/hakuturu583/autoware/tree/fix/enable-spconv-ubuntu2404)*
